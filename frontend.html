@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Movie Recommender</title>
+
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        background: #121212;
+        color: #fff;
+        margin: 0;
+        padding: 20px;
+      }
+
+      h1,
+      h2 {
+        text-align: center;
+      }
+
+      form {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 30px;
+      }
+
+      /* Search container for proper dropdown alignment */
+      .search-container {
+        position: relative;
+        width: 300px;
+      }
+
+      input {
+        padding: 10px;
+        width: 100%; /* IMPORTANT FIX */
+        border-radius: 5px;
+        border: none;
+        font-size: 16px;
+      }
+
+      button {
+        padding: 10px 15px;
+        border: none;
+        border-radius: 5px;
+        background: #ff9800;
+        color: white;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #e68900;
+      }
+
+      ul {
+        list-style: none;
+        padding: 0;
+      }
+
+      li {
+        background: #1e1e1e;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+      }
+
+      li img {
+        width: 150px;
+        border-radius: 8px;
+      }
+
+      li h3 {
+        margin: 0 0 10px;
+      }
+
+      li p {
+        margin: 5px 0;
+        line-height: 1.4;
+      }
+
+      details p {
+        max-width: 600px;
+      }
+
+      /* Star styling */
+      .star {
+        font-size: 18px;
+        margin-right: 2px;
+      }
+
+      .star-filled {
+        color: gold;
+      }
+
+      .star-empty {
+        color: gray;
+      }
+
+      /* Suggestions dropdown */
+      #suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+
+        background: #1e1e1e;
+        border: 1px solid #444;
+        color: white;
+
+        z-index: 9999;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+
+      #suggestions div {
+        padding: 8px;
+        cursor: pointer;
+      }
+
+      #suggestions div:hover {
+        background: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Movie Recommendation System</h1>
+    <form action="/recommended" method="post">
+      <div class="search-container">
+        <input
+          type="text"
+          id="movie-input"
+          name="movie"
+          autocomplete="off"
+          placeholder="Enter movie name"
+        />
+        <div id="suggestions"></div>
+      </div>
+
+      <button type="submit">Recommend</button>
+    </form>
+
+    <h2>Recommend Movies:</h2>
+
+    <ul>
+      {% for movie in recommendations %}
+      <li>
+        <img src="{{movie.poster}}" />
+        <div>
+          <h3>{{movie.title}}</h3>
+
+          <p>{{movie.year}} • {{movie.runtime}} min</p>
+
+          <p>
+            {% for _ in range(movie.rounded_stars) %}
+            <span class="star star-filled">★</span>
+            {% endfor %} {% for _ in range(movie.empty_stars) %}
+            <span class="star star-empty">★</span>
+            {% endfor %}
+          </p>
+
+          <p><strong>Genres:</strong> {{movie.genres}}</p>
+          <p><strong>Director:</strong> {{movie.director}}</p>
+          <p><strong>Cast:</strong> {{movie.cast}}</p>
+
+          <details>
+            <summary>Overview</summary>
+            <p>{{movie.overview}}</p>
+          </details>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </body>
+
+  <script>
+    const input = document.getElementById("movie-input");
+    const suggestions = document.getElementById("suggestions");
+
+    let currentIndex = -1;
+
+    input.addEventListener("input", async () => {
+      const query = input.value;
+
+      currentIndex = -1;
+
+      if (query.length < 2) {
+        suggestions.innerHTML = "";
+        return;
+      }
+
+      const response = await fetch(`/search?q=${query}`);
+      const data = await response.json();
+
+      suggestions.innerHTML = "";
+
+      data.results.forEach((title) => {
+        const div = document.createElement("div");
+
+        div.innerText = title;
+
+        div.classList.add("suggestion-item");
+
+        div.onclick = () => {
+          input.value = title;
+          suggestions.innerHTML = "";
+          currentIndex = -1;
+        };
+
+        suggestions.appendChild(div);
+      });
+    });
+
+    input.addEventListener("keydown", (e) => {
+      const items = document.querySelectorAll("#suggestions div");
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+
+        currentIndex++;
+
+        if (currentIndex >= items.length) {
+          currentIndex = 0;
+        }
+
+        highlight(items);
+      } else if (e.key == "ArrowUp") {
+        e.preventDefault();
+
+        currentIndex--;
+
+        if (currentIndex < 0) {
+          currentIndex = items.length - 1;
+        }
+
+        highlight(items);
+      } else if (e.key === "Enter") {
+        if (currentIndex >= 0 && items[currentIndex]) {
+          e.preventDefault();
+
+          input.value = items[currentIndex].innerText;
+
+          suggestions.innerHTML = "";
+
+          currentIndex = -1;
+        }
+      }
+    });
+
+    function highlight(items) {
+      items.forEach((item) => (item.style.background = ""));
+      if (items[currentIndex]) {
+        items[currentIndex].style.background = "#ccc";
+      }
+    }
+  </script>
+</html>
